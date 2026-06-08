@@ -1,59 +1,98 @@
 "use client";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useEffect, useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Upload } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { MediaUpload } from "@/components/shared/media-upload";
+import { PanoramaViewer } from "@/components/buyer/panorama-viewer";
+import { toast } from "sonner";
 
-const mockRooms = [
-  { id: "1", name: "Living Room", hasImage: true, isStart: true },
-  { id: "2", name: "Kitchen", hasImage: true, isStart: false },
-  { id: "3", name: "Master Bedroom", hasImage: false, isStart: false },
-  { id: "4", name: "Balcony", hasImage: false, isStart: false },
-];
+interface Scene {
+  id: string;
+  room_name: string;
+  image_url: string;
+  is_start_scene: boolean;
+  hotspots: { id: string; label: string; yaw: number; pitch: number; targetSceneId?: string }[];
+  ai_context?: string;
+}
 
-export function Tour360Builder({ experienceId }: { experienceId: string }) {
+export function Tour360Builder({ experienceId, propertyId }: { experienceId: string; propertyId: string }) {
+  const [scenes, setScenes] = useState<Scene[]>([]);
+  const [selected, setSelected] = useState<Scene | null>(null);
+  const [roomName, setRoomName] = useState("");
+
+  useEffect(() => {
+    fetch(`/api/scenes?experienceId=${experienceId}`).then((r) => r.json()).then(setScenes).catch(() => {});
+  }, [experienceId]);
+
+  async function addScene(fileUrl: string) {
+    const res = await fetch("/api/scenes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        experience_id: experienceId,
+        property_id: propertyId,
+        room_name: roomName || `Room ${scenes.length + 1}`,
+        image_url: fileUrl,
+        is_start_scene: scenes.length === 0,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) return toast.error(data.error);
+    setScenes((s) => [...s, data]);
+    setSelected(data);
+    setRoomName("");
+    toast.success("Room added");
+  }
+
+  async function publish() {
+    const res = await fetch(`/api/experiences/${experienceId}/publish`, { method: "POST" });
+    const data = await res.json();
+    if (!res.ok) return toast.error(data.error);
+    toast.success(`Published: ${data.publishedUrl}`);
+  }
+
   return (
     <div className="grid gap-6 lg:grid-cols-[280px_1fr_320px]">
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Rooms</CardTitle>
-          <Button size="sm" variant="outline" className="w-full"><Plus className="mr-2 h-4 w-4" />Add Room</Button>
+          <Input placeholder="Room name" value={roomName} onChange={(e) => setRoomName(e.target.value)} className="mb-2" />
+          <MediaUpload propertyId={propertyId} onUploaded={(a) => addScene(a.file_url)} />
         </CardHeader>
         <CardContent className="space-y-2">
-          {mockRooms.map((room) => (
-            <div key={room.id} className="flex items-center justify-between rounded-md border p-2 text-sm">
-              <span>{room.name}</span>
-              <div className="flex gap-1">
-                {room.isStart && <Badge variant="secondary">Start</Badge>}
-                {!room.hasImage && <Badge variant="warning">No image</Badge>}
-              </div>
-            </div>
+          {scenes.map((room) => (
+            <button key={room.id} type="button" onClick={() => setSelected(room)} className={`w-full rounded-md border p-2 text-left text-sm ${selected?.id === room.id ? "border-primary bg-primary/5" : ""}`}>
+              <span>{room.room_name}</span>
+              {room.is_start_scene && <Badge className="ml-2" variant="secondary">Start</Badge>}
+            </button>
           ))}
         </CardContent>
       </Card>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Panorama Preview</CardTitle>
-          <CardDescription>Experience ID: {experienceId}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex aspect-video items-center justify-center rounded-lg bg-muted">
-            <div className="text-center">
-              <Upload className="mx-auto mb-2 h-8 w-8 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">Upload 360° equirectangular image</p>
-            </div>
-          </div>
+        <CardHeader><CardTitle>Panorama Preview</CardTitle></CardHeader>
+        <CardContent className="aspect-video overflow-hidden rounded-lg">
+          {selected ? (
+            <PanoramaViewer imageUrl={selected.image_url} hotspots={selected.hotspots ?? []} />
+          ) : (
+            <div className="flex h-full items-center justify-center bg-muted text-muted-foreground">Select or add a room</div>
+          )}
         </CardContent>
       </Card>
 
       <Card>
-        <CardHeader><CardTitle className="text-base">Scene Properties</CardTitle></CardHeader>
-        <CardContent className="space-y-4 text-sm text-muted-foreground">
-          <p>Select a room to edit hotspots, starting direction, AI context, and floor map pin.</p>
-          <Button className="w-full">Preview Buyer Experience</Button>
-          <Button className="w-full" variant="default">Publish</Button>
+        <CardHeader><CardTitle className="text-base">Actions</CardTitle></CardHeader>
+        <CardContent className="space-y-3">
+          <Button className="w-full" variant="outline" onClick={async () => {
+            const res = await fetch(`/api/experiences/${experienceId}`);
+            const exp = await res.json();
+            if (exp.slug) window.open(`/view/${exp.slug}`, "_blank");
+            else toast.error("Publish first to get a buyer link");
+          }}>Preview</Button>
+          <Button className="w-full" onClick={publish}>Publish Experience</Button>
         </CardContent>
       </Card>
     </div>

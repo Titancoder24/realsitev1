@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { crmService } from "@/services/crm.service";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { withAuth, jsonError } from "@/lib/api-utils";
 
 const schema = z.object({
   organizationId: z.string().uuid(),
@@ -12,6 +14,22 @@ const schema = z.object({
   source: z.string().optional(),
   campaign: z.string().optional(),
 });
+
+export async function GET(req: Request) {
+  return withAuth(async (profile) => {
+    const admin = createAdminClient();
+    const status = new URL(req.url).searchParams.get("status");
+    let q = admin
+      .from("leads")
+      .select("*, properties(name)")
+      .eq("organization_id", profile.organization_id!)
+      .order("intent_score", { ascending: false });
+    if (status) q = q.eq("lead_status", status);
+    const { data, error } = await q;
+    if (error) return jsonError(error.message, 500);
+    return NextResponse.json(data);
+  }, "sales_agent");
+}
 
 export async function POST(req: Request) {
   try {

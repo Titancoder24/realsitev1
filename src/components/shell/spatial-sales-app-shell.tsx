@@ -93,6 +93,7 @@ export function SpatialSalesAppShell({ children }: { children: React.ReactNode }
           <Input placeholder="Search projects, properties, leads…" className="max-w-md" />
           <div className="ml-auto flex items-center gap-2">
             <Badge variant="success">Engines Online</Badge>
+            <Button size="sm" variant="ghost" asChild><Link href="/dashboard/settings">Settings</Link></Button>
             <Button size="sm" asChild>
               <Link href="/dashboard/projects/new">Create Project</Link>
             </Button>

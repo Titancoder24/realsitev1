@@ -23,7 +23,7 @@ function BuilderContent() {
       {type === "worldlabs_splat" ? (
         <WorldLabsBuilder experienceId={experienceId} propertyId={propertyId} />
       ) : (
-        <Tour360Builder experienceId={experienceId} />
+        <Tour360Builder experienceId={experienceId} propertyId={propertyId} />
       )}
     </div>
   );

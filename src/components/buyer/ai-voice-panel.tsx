@@ -9,11 +9,13 @@ export function AIVoicePanel({
   organizationId,
   propertyId,
   sessionId,
+  sceneId,
   onClose,
 }: {
   organizationId: string;
   propertyId: string;
   sessionId: string;
+  sceneId?: string;
   onClose: () => void;
 }) {
   const [query, setQuery] = useState("");
@@ -29,7 +31,7 @@ export function AIVoicePanel({
       const res = await fetch("/api/ai/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ organizationId, propertyId, sessionId, query: text }),
+        body: JSON.stringify({ organizationId, propertyId, sessionId, sceneId, query: text }),
       });
       const data = await res.json();
       setAnswer(data.answer);
@@ -89,7 +91,32 @@ export function AIVoicePanel({
         <Button size="icon" onClick={() => query && ask(query)} disabled={loading}>
           <Send className="h-4 w-4" />
         </Button>
-        <Button size="icon" variant="secondary"><Mic className="h-4 w-4" /></Button>
+        <Button size="icon" variant="secondary" onClick={async () => {
+          try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const recorder = new MediaRecorder(stream);
+            const chunks: Blob[] = [];
+            recorder.ondataavailable = (e) => chunks.push(e.data);
+            recorder.onstop = async () => {
+              stream.getTracks().forEach((t) => t.stop());
+              const blob = new Blob(chunks, { type: "audio/webm" });
+              const form = new FormData();
+              form.append("audio", blob);
+              form.append("organizationId", organizationId);
+              form.append("propertyId", propertyId);
+              form.append("sessionId", sessionId);
+              const res = await fetch("/api/ai/voice", { method: "POST", body: form });
+              if (res.ok) {
+                const answer = decodeURIComponent(res.headers.get("X-AI-Answer") ?? "");
+                setAnswer(answer);
+                const audio = new Audio(URL.createObjectURL(await res.blob()));
+                audio.play();
+              }
+            };
+            recorder.start();
+            setTimeout(() => recorder.stop(), 4000);
+          } catch { setAnswer("Microphone access denied."); }
+        }}><Mic className="h-4 w-4" /></Button>
       </div>
     </div>
   );

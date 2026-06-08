@@ -3,6 +3,8 @@ import { z } from "zod";
 import { aiService } from "@/services/ai.service";
 import { crmService } from "@/services/crm.service";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { rateLimit } from "@/lib/rate-limit";
+import { jsonError } from "@/lib/api-utils";
 
 const schema = z.object({
   organizationId: z.string().uuid(),
@@ -15,6 +17,9 @@ const schema = z.object({
 
 export async function POST(req: Request) {
   try {
+    const ip = req.headers.get("x-forwarded-for") ?? "anon";
+    if (!rateLimit(`ai-chat:${ip}`, 40, 60000)) return jsonError("Rate limit exceeded", 429);
+
     const body = schema.parse(await req.json());
     const response = await aiService.answer(body);
 

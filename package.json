@@ -11,6 +11,8 @@
     "db:types": "supabase gen types typescript --local > src/types/database.types.ts"
   },
   "dependencies": {
+    "@mkkellogg/gaussian-splats-3d": "^0.4.7",
+    "@photo-sphere-viewer/core": "^5.14.1",
     "@radix-ui/react-accordion": "^1.2.11",
     "@radix-ui/react-alert-dialog": "^1.1.14",
     "@radix-ui/react-avatar": "^1.1.10",
@@ -46,6 +48,7 @@
     "recharts": "^2.15.3",
     "sonner": "^2.0.5",
     "tailwind-merge": "^3.3.0",
+    "three": "^0.184.0",
     "uuid": "^11.1.0",
     "zod": "^3.25.56"
   },
@@ -55,6 +58,7 @@
     "@types/node": "^22.15.30",
     "@types/react": "^19.1.6",
     "@types/react-dom": "^19.1.6",
+    "@types/three": "^0.184.1",
     "@types/uuid": "^10.0.0",
     "eslint": "^9.28.0",
     "eslint-config-next": "^15.3.3",

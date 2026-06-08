@@ -407,15 +407,20 @@ Maps Efferd free blocks to product screens:
 
 ## 13. Production Checklist
 
-- [ ] Supabase project created, migration applied
-- [ ] RLS policies tested per role
+- [ ] Supabase project created — apply `001_initial_schema.sql` + `002_v1_live_features.sql`
 - [ ] `.env.local` configured (keys server-side only)
-- [ ] World Labs job queue → BullMQ/Redis for scale (currently in-process async)
-- [ ] CDN for media assets (R2/S3)
-- [ ] Sentry + OpenTelemetry
-- [ ] Rate limiting on `/api/ai/*`
+- [x] Auth + middleware (`/login`, `/signup`, RBAC)
+- [x] Full CRUD APIs (projects, properties, experiences, scenes, floor maps, checkpoints, knowledge)
+- [x] Media upload via Supabase Storage + World Labs prepare_upload
+- [x] Publish flow + public buyer viewer (`/api/experiences/public/[slug]`)
+- [x] Panorama viewer (`@photo-sphere-viewer/core`) + Splat viewer (`@mkkellogg/gaussian-splats-3d`)
+- [x] pgvector RAG via `match_knowledge` + `EmbeddingService`
+- [x] AI test console, voice pipeline, CRM timeline, analytics, campaigns
+- [x] Admin live World Labs jobs, engine control, model settings
+- [x] Rate limiting on `/api/ai/chat`
+- [ ] BullMQ/Redis job queue (in-process async today)
 - [ ] WebRTC family sessions (V1.5 — LiveKit)
-- [ ] pgvector embedding pipeline for semantic RAG
+- [ ] Sentry + OpenTelemetry
 
 ---
 
