@@ -11,6 +11,8 @@ const schema = z.object({
   address: z.string().optional(),
   rera_number: z.string().optional(),
   possession_timeline: z.string().optional(),
+  branding: z.record(z.unknown()).optional(),
+  settings: z.record(z.unknown()).optional(),
 });
 
 export async function GET() {

@@ -4,16 +4,10 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { worldLabsService } from "@/services/world-labs.service";
+import { subscribeWorldLabsJob } from "@/lib/supabase/realtime";
 import type { WorldLabsJobStatus as JobStatus } from "@/types/domain";
 
 const PROGRESS_MAP: Partial<Record<JobStatus, number>> = {
-  draft: 5,
-  media_uploaded: 10,
-  validating_media: 15,
-  preparing_worldlabs_upload: 20,
-  worldlabs_upload_ready: 25,
-  worldlabs_media_uploaded: 30,
   worldlabs_generation_requested: 40,
   worldlabs_processing: 60,
   worldlabs_succeeded: 75,
@@ -23,28 +17,34 @@ const PROGRESS_MAP: Partial<Record<JobStatus, number>> = {
   published: 100,
 };
 
+const LABELS: Record<string, string> = {
+  worldlabs_processing: "Generating 3D world",
+  ready_for_review: "Ready for review",
+};
+
 export function WorldLabsJobStatus({ jobId, onReady }: { jobId: string; onReady?: () => void }) {
-  const [status, setStatus] = useState<string>("worldlabs_processing");
+  const [status, setStatus] = useState("worldlabs_processing");
   const [developerLabel, setDeveloperLabel] = useState("Generating 3D world");
 
   useEffect(() => {
-    const interval = setInterval(async () => {
-      try {
-        const res = await fetch(`/api/worldlabs/jobs/${jobId}`);
-        const data = await res.json();
-        if (data.status) {
-          setStatus(data.status);
-          setDeveloperLabel(data.developerLabel ?? worldLabsService.getDeveloperStatus(data.status));
-          if (data.status === "ready_for_review" || data.status === "published") {
-            onReady?.();
-            clearInterval(interval);
-          }
-        }
-      } catch {
-        // polling continues
-      }
-    }, 5000);
-    return () => clearInterval(interval);
+    async function poll() {
+      const res = await fetch(`/api/worldlabs/jobs/${jobId}`);
+      const data = await res.json();
+      if (data.status) applyUpdate(data.status, data.developerLabel);
+    }
+
+    function applyUpdate(s: string, label?: string) {
+      setStatus(s);
+      setDeveloperLabel(label ?? LABELS[s] ?? "Processing");
+      if (s === "ready_for_review" || s === "published") onReady?.();
+    }
+
+    poll();
+    const unsubRealtime = subscribeWorldLabsJob(jobId, (row) => {
+      applyUpdate(row.status as string);
+    });
+    const interval = setInterval(poll, 15000);
+    return () => { clearInterval(interval); unsubRealtime(); };
   }, [jobId, onReady]);
 
   const progress = PROGRESS_MAP[status as JobStatus] ?? 50;
@@ -60,9 +60,7 @@ export function WorldLabsJobStatus({ jobId, onReady }: { jobId: string; onReady?
       </CardHeader>
       <CardContent className="space-y-4">
         <Progress value={progress} />
-        <p className="text-sm text-muted-foreground">
-          World generation typically takes about 5 minutes. You can leave this page — we will notify you when ready.
-        </p>
+        <p className="text-sm text-muted-foreground">Realtime + polling active. Typical generation ~5 minutes.</p>
       </CardContent>
     </Card>
   );

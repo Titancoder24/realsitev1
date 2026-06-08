@@ -10,7 +10,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
     .from("experiences")
     .select(`
       id, type, status, slug, viewer_config, organization_id, property_id,
-      properties(id, name, project_id, projects(name, branding)),
+      properties(id, name, project_id, projects(name, branding, organizations(branding))),
       tour_360_scenes(*),
       splat_worlds(*),
       floor_maps(*),

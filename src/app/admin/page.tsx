@@ -16,6 +16,7 @@ export default function AdminPage() {
             { title: "World Labs Operations", href: "/admin/worldlabs", status: "Online" },
             { title: "Engine Control", href: "/admin/engines", status: "360 + World Labs" },
             { title: "Model & Voice", href: "/admin/models", status: "Configured" },
+            { title: "Audit Logs", href: "/admin/audit", status: "Active" },
           ].map((item) => (
             <Link key={item.href} href={item.href}>
               <Card className="transition-colors hover:border-primary/50">

@@ -3,19 +3,37 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 export default function SettingsPage() {
   const [profile, setProfile] = useState<{ full_name?: string; email?: string; role?: string } | null>(null);
+  const [branding, setBranding] = useState({ primary_color: "#4f46e5", logo_url: "" });
+  const [customDomain, setCustomDomain] = useState("");
   const router = useRouter();
 
   useEffect(() => {
     const supabase = createClient();
     supabase.auth.getUser().then(({ data }) => {
-      if (data.user) setProfile({ email: data.user.email, full_name: data.user.user_metadata?.full_name, role: data.user.user_metadata?.role });
+      if (data.user) setProfile({ email: data.user.email ?? undefined, full_name: data.user.user_metadata?.full_name, role: data.user.user_metadata?.role });
     });
+    fetch("/api/organization/settings").then((r) => r.json()).then((d) => {
+      if (d.branding) setBranding({ primary_color: d.branding.primary_color ?? "#4f46e5", logo_url: d.branding.logo_url ?? "" });
+      if (d.custom_domain) setCustomDomain(d.custom_domain);
+    }).catch(() => {});
   }, []);
+
+  async function saveBranding() {
+    const res = await fetch("/api/organization/settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ branding, custom_domain: customDomain, white_label_config: { enabled: true } }),
+    });
+    if (!res.ok) return toast.error("Failed to save");
+    toast.success("White-label settings saved");
+  }
 
   async function logout() {
     const supabase = createClient();
@@ -33,6 +51,15 @@ export default function SettingsPage() {
           <p><span className="text-muted-foreground">Email:</span> {profile?.email}</p>
           <p><span className="text-muted-foreground">Role:</span> {profile?.role ?? "organization_admin"}</p>
           <Button variant="outline" onClick={logout}>Sign Out</Button>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader><CardTitle>White-Label Branding</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
+          <Input placeholder="Primary color" value={branding.primary_color} onChange={(e) => setBranding({ ...branding, primary_color: e.target.value })} />
+          <Input placeholder="Logo URL" value={branding.logo_url} onChange={(e) => setBranding({ ...branding, logo_url: e.target.value })} />
+          <Input placeholder="Custom domain (e.g. tours.yourbrand.com)" value={customDomain} onChange={(e) => setCustomDomain(e.target.value)} />
+          <Button onClick={saveBranding}>Save Branding</Button>
         </CardContent>
       </Card>
     </div>

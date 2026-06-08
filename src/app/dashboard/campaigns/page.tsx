@@ -7,12 +7,20 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 
 export default function CampaignsPage() {
-  const [campaigns, setCampaigns] = useState<{ id: string; utm_campaign?: string; url?: string; properties?: { name: string } }[]>([]);
+  const [campaigns, setCampaigns] = useState<{ id: string; utm_campaign?: string; url?: string; properties?: { name: string }; sessions?: number; leads?: number; hotLeads?: number }[]>([]);
   const [properties, setProperties] = useState<{ id: string; name: string }[]>([]);
   const [form, setForm] = useState({ property_id: "", utm_source: "whatsapp", utm_medium: "social", utm_campaign: "" });
 
   useEffect(() => {
     fetch("/api/campaigns").then((r) => r.json()).then(setCampaigns).catch(() => {});
+    fetch("/api/campaigns/analytics").then((r) => r.json()).then((analytics) => {
+      if (Array.isArray(analytics)) {
+        setCampaigns((prev) => prev.map((c) => {
+          const a = analytics.find((x: { id: string }) => x.id === c.id);
+          return a ? { ...c, sessions: a.sessions, leads: a.leads, hotLeads: a.hotLeads } : c;
+        }));
+      }
+    }).catch(() => {});
     fetch("/api/properties").then((r) => r.json()).then(setProperties);
   }, []);
 
@@ -45,6 +53,7 @@ export default function CampaignsPage() {
           <Card key={c.id}>
             <CardContent className="py-4">
               <p className="font-medium">{c.properties?.name} — {c.utm_campaign}</p>
+              <p className="text-xs text-muted-foreground">{c.sessions ?? 0} sessions · {c.leads ?? 0} leads · {c.hotLeads ?? 0} hot</p>
               <p className="text-xs text-muted-foreground break-all">{c.url}</p>
             </CardContent>
           </Card>

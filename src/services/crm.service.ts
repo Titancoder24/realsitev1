@@ -36,6 +36,7 @@ export class CRMService {
 
   async refreshIntentScore(leadId: string) {
     const supabase = createAdminClient();
+    const { data: lead } = await supabase.from("leads").select("session_id").eq("id", leadId).single();
     const { data: events } = await supabase
       .from("lead_events")
       .select("event_type")
@@ -43,9 +44,19 @@ export class CRMService {
 
     const { score, signals } = intentEngineService.computeScore(events ?? []);
 
+    let groupIntentScore: number | undefined;
+    if (lead?.session_id) {
+      const { data: familyEvents } = await supabase
+        .from("lead_events")
+        .select("event_type")
+        .eq("session_id", lead.session_id);
+      groupIntentScore = intentEngineService.computeScore(familyEvents ?? []).score;
+    }
+
     await supabase.from("leads").update({
       intent_score: score,
       intent_signals: signals,
+      group_intent_score: groupIntentScore,
       updated_at: new Date().toISOString(),
     }).eq("id", leadId);
 

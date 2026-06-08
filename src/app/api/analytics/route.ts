@@ -7,32 +7,29 @@ export async function GET() {
     const admin = createAdminClient();
     const orgId = profile.organization_id!;
 
-    const [{ count: sessions }, { count: leads }, { data: hotLeads }, { data: events }, { data: heatmap }] = await Promise.all([
+    const { data: orgProperties } = await admin.from("properties").select("id").eq("organization_id", orgId);
+    const propertyIds = (orgProperties ?? []).map((p) => p.id);
+
+    const [{ count: sessions }, { count: leads }, { data: hotLeads }, { data: events }, { data: heatmapPoints }] = await Promise.all([
       admin.from("buyer_sessions").select("*", { count: "exact", head: true }).eq("organization_id", orgId),
       admin.from("leads").select("*", { count: "exact", head: true }).eq("organization_id", orgId),
       admin.from("leads").select("intent_score").eq("organization_id", orgId).gte("intent_score", 80),
       admin.from("analytics_events").select("event_type, created_at").eq("organization_id", orgId).order("created_at", { ascending: false }).limit(100),
-      admin.from("heatmap_points").select("scene_id, dwell_seconds, property_id").limit(500),
+      propertyIds.length
+        ? admin.from("heatmap_points").select("scene_id, dwell_seconds, property_id, x, y, z, experience_type").in("property_id", propertyIds).limit(500)
+        : Promise.resolve({ data: [] }),
     ]);
 
     const eventCounts: Record<string, number> = {};
     (events ?? []).forEach((e) => { eventCounts[e.event_type] = (eventCounts[e.event_type] ?? 0) + 1; });
-
-    const roomDwell: Record<string, number> = {};
-    (heatmap ?? []).forEach((h) => {
-      const key = h.scene_id ?? "unknown";
-      roomDwell[key] = (roomDwell[key] ?? 0) + (h.dwell_seconds ?? 0);
-    });
-
-    const topRooms = Object.entries(roomDwell).sort((a, b) => b[1] - a[1]).slice(0, 5);
 
     return NextResponse.json({
       totalSessions: sessions ?? 0,
       totalLeads: leads ?? 0,
       hotLeads: hotLeads?.length ?? 0,
       eventCounts,
-      topRooms,
-      recommendations: generateRecommendations(eventCounts, topRooms),
+      heatmapPoints: heatmapPoints ?? [],
+      recommendations: generateRecommendations(eventCounts, []),
     });
   });
 }

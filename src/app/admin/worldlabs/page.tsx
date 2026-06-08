@@ -26,7 +26,7 @@ export default function WorldLabsAdminPage() {
     }).catch(() => {});
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function retry(jobId: string) {
     const res = await fetch("/api/admin/worldlabs/jobs", {

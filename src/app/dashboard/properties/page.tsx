@@ -57,7 +57,10 @@ function PropertiesContent() {
                 <CardTitle className="text-base">{p.name}</CardTitle>
                 <p className="text-sm text-muted-foreground">{p.unit_type} · {p.experiences?.length ?? 0} experiences</p>
               </div>
-              <Badge variant={p.publish_status === "published" ? "success" : "secondary"}>{p.publish_status ?? "draft"}</Badge>
+              <div className="flex items-center gap-2">
+                <Badge variant={p.publish_status === "published" ? "success" : "secondary"}>{p.publish_status ?? "draft"}</Badge>
+                <Link href={`/dashboard/properties/${p.id}`} className="text-sm text-primary underline">Edit</Link>
+              </div>
             </CardHeader>
           </Card>
         ))}

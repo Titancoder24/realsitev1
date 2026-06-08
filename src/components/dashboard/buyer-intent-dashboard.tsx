@@ -33,9 +33,12 @@ export function BuyerIntentDashboard() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Buyer Intent CRM</h1>
-        <p className="text-muted-foreground">Live lead data from buyer sessions</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold">Buyer Intent CRM</h1>
+          <p className="text-muted-foreground">Live lead data from buyer sessions</p>
+        </div>
+        <button type="button" onClick={() => { window.location.href = "/api/leads/export"; }} className="rounded-md border px-3 py-2 text-sm hover:bg-muted">Export CSV</button>
       </div>
       <div className="grid gap-4 md:grid-cols-4">
         {[

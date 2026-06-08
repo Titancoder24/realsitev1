@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { spatialGenerationService } from "@/services/spatial-generation.service";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { withAuth, jsonError } from "@/lib/api-utils";
+import { enqueueWorldLabsJob } from "@/lib/queue/worldlabs-queue";
 
 const schema = z.object({
   experienceId: z.string().uuid(),
@@ -13,40 +15,30 @@ const schema = z.object({
 });
 
 export async function POST(req: Request) {
-  try {
-    const body = await req.json();
-    const input = schema.parse(body);
+  return withAuth(async (profile) => {
+    try {
+      const body = schema.parse(await req.json());
+      const admin = createAdminClient();
+      const { data: property } = await admin.from("properties").select("organization_id").eq("id", body.propertyId).single();
+      if (!property) return jsonError("Property not found", 404);
+      if (property.organization_id !== profile.organization_id) return jsonError("Forbidden", 403);
 
-    const supabase = createAdminClient();
-    const { data: property } = await supabase
-      .from("properties")
-      .select("organization_id")
-      .eq("id", input.propertyId)
-      .single();
+      const result = await spatialGenerationService.generate("worldlabs_splat", {
+        experienceId: body.experienceId,
+        propertyId: body.propertyId,
+        organizationId: property.organization_id,
+        mediaAssetIds: body.mediaAssetIds ?? [],
+        prompt: body.prompt,
+        model: body.model,
+      });
 
-    if (!property) {
-      return NextResponse.json({ error: "Property not found" }, { status: 404 });
+      if (result.jobId) {
+        const mode = await enqueueWorldLabsJob(result.jobId);
+        return NextResponse.json({ jobId: result.jobId, status: result.status, queue: mode });
+      }
+      return NextResponse.json({ jobId: result.jobId, status: result.status });
+    } catch (err) {
+      return jsonError(err instanceof Error ? err.message : "Generation failed", 500);
     }
-
-    const organizationId = input.organizationId ?? property.organization_id;
-
-    const result = await spatialGenerationService.generate("worldlabs_splat", {
-      experienceId: input.experienceId,
-      propertyId: input.propertyId,
-      organizationId,
-      mediaAssetIds: input.mediaAssetIds ?? [],
-      prompt: input.prompt,
-      model: input.model,
-    });
-
-    // Process async in background (production: use BullMQ queue)
-    if (result.jobId) {
-      spatialGenerationService.processWorldLabsJob(result.jobId).catch(console.error);
-    }
-
-    return NextResponse.json({ jobId: result.jobId, status: result.status });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Generation failed";
-    return NextResponse.json({ error: message }, { status: 500 });
-  }
+  }, "project_manager");
 }
