@@ -26,7 +26,7 @@ export async function GET() {
       .order("updated_at", { ascending: false });
     if (error) return jsonError(error.message, 500);
     return NextResponse.json(data);
-  });
+  }, "viewer");
 }
 
 export async function POST(req: Request) {

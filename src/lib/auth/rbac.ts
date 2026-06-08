@@ -32,10 +32,24 @@ export function canManageLeads(role: UserRole): boolean {
 
 export const ROUTE_PERMISSIONS: Record<string, UserRole> = {
   "/dashboard": "viewer",
+  "/dashboard/analytics": "marketing_manager",
   "/dashboard/projects": "project_manager",
   "/dashboard/properties": "project_manager",
   "/dashboard/experiences": "project_manager",
+  "/dashboard/floor-maps": "project_manager",
+  "/dashboard/checkpoints": "project_manager",
+  "/dashboard/knowledge": "project_manager",
+  "/dashboard/ai-agent": "project_manager",
   "/dashboard/leads": "sales_agent",
   "/dashboard/campaigns": "marketing_manager",
+  "/dashboard/settings": "viewer",
+  "/dashboard/team": "organization_admin",
   "/admin": "platform_admin",
 };
+
+export function getRouteMinRole(path: string): UserRole | null {
+  const match = Object.entries(ROUTE_PERMISSIONS)
+    .sort((a, b) => b[0].length - a[0].length)
+    .find(([route]) => path === route || path.startsWith(route + "/"));
+  return match?.[1] ?? null;
+}

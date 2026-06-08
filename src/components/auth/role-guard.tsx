@@ -14,7 +14,7 @@ export function useUserRole() {
     supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (!user) { setLoading(false); return; }
       const { data } = await supabase.from("profiles").select("role").eq("id", user.id).single();
-      setRole((data?.role as UserRole) ?? "organization_admin");
+      setRole((data?.role as UserRole) ?? "viewer");
       setLoading(false);
     });
   }, []);

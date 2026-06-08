@@ -91,10 +91,15 @@ export class SpatialGenerationService {
       await updateStatus("worldlabs_processing", { started_at: new Date().toISOString() });
 
       const mediaIds = (job.input_media_asset_ids as string[]) ?? [];
+      const worldLabsIds = await resolveWorldLabsMediaIds(mediaIds);
       const prompt = (job.world_prompt_payload as { prompt?: string })?.prompt;
 
+      if (mediaIds.length && !worldLabsIds.length) {
+        throw new Error("No World Labs media_asset_id found. Re-upload images for 3D generation.");
+      }
+
       const { operationId, operation } = await worldLabsService.generateWorld({
-        mediaAssetIds: mediaIds.length ? mediaIds : undefined,
+        mediaAssetIds: worldLabsIds.length ? worldLabsIds : undefined,
         prompt,
         model: job.model ?? undefined,
       });
@@ -155,6 +160,18 @@ export class SpatialGenerationService {
         .eq("id", job.experience_id);
     }
   }
+}
+
+async function resolveWorldLabsMediaIds(supabaseAssetIds: string[]): Promise<string[]> {
+  if (!supabaseAssetIds.length) return [];
+  const supabase = createAdminClient();
+  const { data: assets } = await supabase
+    .from("media_assets")
+    .select("worldlabs_media_asset_id")
+    .in("id", supabaseAssetIds);
+  return (assets ?? [])
+    .map((a) => a.worldlabs_media_asset_id)
+    .filter((id): id is string => Boolean(id));
 }
 
 export const spatialGenerationService = new SpatialGenerationService();

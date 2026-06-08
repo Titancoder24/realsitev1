@@ -3,6 +3,8 @@ import { spatialGenerationService } from "@/services/spatial-generation.service"
 
 const QUEUE_NAME = "worldlabs-jobs";
 
+let workerStarted = false;
+
 function getConnection() {
   const url = process.env.REDIS_URL;
   if (!url) return null;
@@ -26,13 +28,16 @@ export async function enqueueWorldLabsJob(jobId: string) {
 }
 
 export function startWorldLabsWorker() {
+  if (workerStarted || typeof window !== "undefined") return;
   const connection = getConnection();
-  if (!connection || process.env.NODE_ENV === "production" && !process.env.ENABLE_INLINE_WORKER) {
-    if (typeof window === "undefined" && connection) {
-      new Worker(QUEUE_NAME, async (job) => {
-        await spatialGenerationService.processWorldLabsJob(job.data.jobId);
-      }, { connection });
-    }
-    return;
-  }
+  if (!connection) return;
+
+  workerStarted = true;
+  new Worker(
+    QUEUE_NAME,
+    async (job) => {
+      await spatialGenerationService.processWorldLabsJob(job.data.jobId);
+    },
+    { connection },
+  );
 }
