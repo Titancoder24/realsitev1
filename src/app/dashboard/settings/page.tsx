@@ -12,6 +12,7 @@ export default function SettingsPage() {
   const [profile, setProfile] = useState<{ full_name?: string; email?: string; role?: string } | null>(null);
   const [branding, setBranding] = useState({ primary_color: "#4f46e5", logo_url: "" });
   const [customDomain, setCustomDomain] = useState("");
+  const [dbHealth, setDbHealth] = useState<{ connected: boolean; configured: boolean; latencyMs?: number; error?: string; projectUrl?: string } | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -23,6 +24,7 @@ export default function SettingsPage() {
       if (d.branding) setBranding({ primary_color: d.branding.primary_color ?? "#4f46e5", logo_url: d.branding.logo_url ?? "" });
       if (d.custom_domain) setCustomDomain(d.custom_domain);
     }).catch(() => {});
+    fetch("/api/health/db").then((r) => r.json()).then(setDbHealth).catch(() => {});
   }, []);
 
   async function saveBranding() {
@@ -51,6 +53,29 @@ export default function SettingsPage() {
           <p><span className="text-muted-foreground">Email:</span> {profile?.email}</p>
           <p><span className="text-muted-foreground">Role:</span> {profile?.role ?? "organization_admin"}</p>
           <Button variant="outline" onClick={logout}>Sign Out</Button>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader><CardTitle>Database Connection</CardTitle></CardHeader>
+        <CardContent className="space-y-2 text-sm">
+          {dbHealth ? (
+            <>
+              <p>
+                <span className="text-muted-foreground">Status:</span>{" "}
+                <span className={dbHealth.connected ? "text-emerald-600" : "text-amber-700"}>
+                  {dbHealth.connected ? "Connected" : dbHealth.configured ? "Configured but unreachable" : "Not configured"}
+                </span>
+              </p>
+              {dbHealth.projectUrl && <p><span className="text-muted-foreground">Project:</span> {dbHealth.projectUrl}</p>}
+              {dbHealth.latencyMs != null && <p><span className="text-muted-foreground">Latency:</span> {dbHealth.latencyMs}ms</p>}
+              {dbHealth.error && <p className="text-amber-800">{dbHealth.error}</p>}
+              {!dbHealth.connected && (
+                <p className="text-muted-foreground">Set real Supabase keys in <code>.env.local</code> and apply migrations 001–003. Authenticate the Supabase MCP server in Cursor to manage schema from the IDE.</p>
+              )}
+            </>
+          ) : (
+            <p className="text-muted-foreground">Checking connection…</p>
+          )}
         </CardContent>
       </Card>
       <Card>
