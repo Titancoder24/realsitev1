@@ -64,7 +64,7 @@ export async function GET() {
       sessionsByDay,
       liveNow,
     });
-  });
+  }, "marketing_manager");
 }
 
 function generateRecommendations(events: Record<string, number>) {

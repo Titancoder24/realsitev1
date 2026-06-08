@@ -18,9 +18,11 @@ export function WorldLabsBuilder({ experienceId, propertyId }: { experienceId: s
   const [jobId, setJobId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [mediaAssetIds, setMediaAssetIds] = useState<string[]>([]);
+  const [worldLabsReady, setWorldLabsReady] = useState(0);
 
   async function submitGeneration() {
     if (!mediaAssetIds.length) return toast.error("Upload at least one image");
+    if (worldLabsReady < mediaAssetIds.length) return toast.error("World Labs upload incomplete. Re-upload your images.");
     setUploading(true);
     try {
       const res = await fetch("/api/worldlabs/generate", {
@@ -61,7 +63,14 @@ export function WorldLabsBuilder({ experienceId, propertyId }: { experienceId: s
         <Card>
           <CardHeader><CardTitle>Upload Property Media</CardTitle><CardDescription>{mediaAssetIds.length} file(s) ready</CardDescription></CardHeader>
           <CardContent className="space-y-4">
-            <MediaUpload propertyId={propertyId} forWorldLabs onUploaded={(a) => setMediaAssetIds((ids) => [...ids, a.id])} />
+            <MediaUpload
+              propertyId={propertyId}
+              forWorldLabs
+              onUploaded={(a) => {
+                setMediaAssetIds((ids) => [...ids, a.id]);
+                if (a.worldlabs_media_asset_id) setWorldLabsReady((n) => n + 1);
+              }}
+            />
             <Button onClick={() => setStep(1)} disabled={!mediaAssetIds.length}>Continue</Button>
           </CardContent>
         </Card>

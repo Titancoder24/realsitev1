@@ -1,5 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { getRouteMinRole, hasRole } from "@/lib/auth/rbac";
+import type { UserRole } from "@/types/domain";
 
 const PROTECTED_PREFIXES = ["/dashboard", "/admin"];
 const AUTH_ROUTES = ["/login", "/signup"];
@@ -48,16 +50,26 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (path.startsWith("/admin") && user) {
+  if (user && (isProtected || path.startsWith("/admin"))) {
     const { data: profile } = await supabase
       .from("profiles")
       .select("role")
       .eq("id", user.id)
       .single();
 
-    if (profile?.role !== "platform_admin") {
+    const role = (profile?.role as UserRole) ?? "viewer";
+
+    if (path.startsWith("/admin") && role !== "platform_admin") {
       const url = request.nextUrl.clone();
       url.pathname = "/dashboard";
+      return NextResponse.redirect(url);
+    }
+
+    const minRole = getRouteMinRole(path);
+    if (minRole && !hasRole(role, minRole)) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/dashboard";
+      url.searchParams.set("forbidden", "1");
       return NextResponse.redirect(url);
     }
   }

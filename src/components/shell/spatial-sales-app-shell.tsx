@@ -42,6 +42,7 @@ const navGroups = [
   {
     label: "System",
     items: [
+      { href: "/dashboard/team", label: "Team", icon: Users, minRole: "organization_admin" as const },
       { href: "/dashboard/settings", label: "Settings", icon: Settings },
       { href: "/admin", label: "Admin", icon: Shield, adminOnly: true },
     ],

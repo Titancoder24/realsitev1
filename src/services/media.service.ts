@@ -46,8 +46,10 @@ export class MediaService {
       const admin = createAdminClient();
       await admin.from("media_assets").update({ worldlabs_media_asset_id: prepared.media_asset_id }).eq("id", asset.id);
       return { ...asset, worldlabs_media_asset_id: prepared.media_asset_id };
-    } catch {
-      return asset;
+    } catch (err) {
+      const admin = createAdminClient();
+      await admin.from("media_assets").update({ metadata: { worldlabs_upload_error: err instanceof Error ? err.message : "upload failed" } }).eq("id", asset.id);
+      throw new Error(`World Labs media upload failed: ${err instanceof Error ? err.message : "unknown error"}`);
     }
   }
 }
